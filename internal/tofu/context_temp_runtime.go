@@ -87,8 +87,6 @@ func (c *Context) newEngineShim(ctx context.Context, config *configs.Config, inp
 
 	inputValues := exprs.ConstantValuer(cty.ObjectVal(rawInput))
 
-	tempLoader, _ := configload.NewLoader(&configload.Config{})
-
 	owd := "."
 	if c.meta != nil && c.meta.OriginalWorkingDir != "" {
 		owd = c.meta.OriginalWorkingDir
@@ -99,7 +97,7 @@ func (c *Context) newEngineShim(ctx context.Context, config *configs.Config, inp
 		RootModuleDir:      config.Module.SourceDir,
 		OriginalWorkingDir: owd,
 		Modules: &newRuntimeModules{
-			loader: tempLoader,
+			loader: configload.NewLazy(&configload.Config{}),
 		},
 		Providers:     plugins,
 		Provisioners:  plugins,
@@ -266,7 +264,7 @@ func (n *newRuntimeModules) ModuleConfig(ctx context.Context, source addrs.Modul
 	log.Printf("[TRACE] backend/local: Loading module from %q from local path %q", source, sourceDir)
 
 	n.mu.Lock()
-	mod, hclDiags := n.loader.Parser().LoadConfigDirUneval(sourceDir, configs.SelectiveLoadAll)
+	mod, hclDiags := n.loader.LoadConfigDirUneval(sourceDir, configs.SelectiveLoadAll)
 	n.mu.Unlock()
 	diags = diags.Append(hclDiags)
 	if hclDiags.HasErrors() {
